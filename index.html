@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#2563eb" />
+  <meta name="description" content="JB Finance Tracker — a simple offline-ready personal finance tracker." />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="styles.css" />
+  <title>JB Finance Tracker</title>
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header__brand">
+      <span class="app-header__logo">JB</span>
+      <h1 class="app-header__title">Finance Tracker</h1>
+    </div>
+    <button id="themeToggle" class="icon-btn" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">
+      <span class="icon-btn__sun">☀️</span>
+      <span class="icon-btn__moon">🌙</span>
+    </button>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab is-active" data-tab="transactions" role="tab">Transactions</button>
+    <button class="tab" data-tab="charts" role="tab">Charts</button>
+    <button class="tab" data-tab="budget" role="tab">Budget</button>
+  </nav>
+
+  <main class="content">
+    <!-- ================= TRANSACTIONS TAB ================= -->
+    <section id="tab-transactions" class="tab-panel is-active">
+      <div class="summary">
+        <div class="summary-card summary-card--balance">
+          <span class="summary-card__label">Balance</span>
+          <span class="summary-card__value" id="summaryBalance">$0.00</span>
+        </div>
+        <div class="summary-card summary-card--income">
+          <span class="summary-card__label">Income</span>
+          <span class="summary-card__value" id="summaryIncome">$0.00</span>
+        </div>
+        <div class="summary-card summary-card--expense">
+          <span class="summary-card__label">Expense</span>
+          <span class="summary-card__value" id="summaryExpense">$0.00</span>
+        </div>
+      </div>
+
+      <div class="filters">
+        <select id="filterType" class="filter-select" aria-label="Filter by type">
+          <option value="all">All types</option>
+          <option value="income">Income</option>
+          <option value="expense">Expense</option>
+        </select>
+        <select id="filterCategory" class="filter-select" aria-label="Filter by category">
+          <option value="all">All categories</option>
+        </select>
+        <select id="filterMonth" class="filter-select" aria-label="Filter by month">
+          <option value="all">All months</option>
+        </select>
+      </div>
+
+      <div id="transactionList" class="transaction-list">
+        <p class="empty-state" id="emptyState">No transactions yet. Tap the + button to add one.</p>
+      </div>
+    </section>
+
+    <!-- ================= CHARTS TAB ================= -->
+    <section id="tab-charts" class="tab-panel">
+      <div class="chart-card">
+        <h2 class="chart-card__title">Income vs Expense</h2>
+        <div class="chart-wrap"><canvas id="chartIncomeExpense"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h2 class="chart-card__title">Expenses by Category</h2>
+        <div class="chart-wrap"><canvas id="chartByCategory"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h2 class="chart-card__title">6-Month Trend</h2>
+        <div class="chart-wrap"><canvas id="chartTrend"></canvas></div>
+      </div>
+    </section>
+
+    <!-- ================= BUDGET TAB ================= -->
+    <section id="tab-budget" class="tab-panel">
+      <div class="budget-intro">
+        <p>Set a monthly spending limit per category. Progress is based on this month's expenses.</p>
+      </div>
+      <div id="budgetList" class="budget-list"></div>
+    </section>
+  </main>
+
+  <!-- Floating Add button -->
+  <button id="addBtn" class="fab" type="button" aria-label="Add transaction">+</button>
+
+  <!-- ================= ADD/EDIT TRANSACTION MODAL ================= -->
+  <div id="txModal" class="modal" aria-hidden="true">
+    <div class="modal__backdrop" data-close></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="txModalTitle">
+      <div class="modal__header">
+        <h2 id="txModalTitle" class="modal__title">Add Transaction</h2>
+        <button class="icon-btn" type="button" data-close aria-label="Close">✕</button>
+      </div>
+      <form id="txForm" class="form">
+        <input type="hidden" id="txId" />
+        <div class="type-toggle">
+          <label class="type-toggle__option is-active" data-type="expense">
+            <input type="radio" name="txType" value="expense" checked /> Expense
+          </label>
+          <label class="type-toggle__option" data-type="income">
+            <input type="radio" name="txType" value="income" /> Income
+          </label>
+        </div>
+
+        <label class="field">
+          <span class="field__label">Amount</span>
+          <input type="number" id="txAmount" class="field__input" step="0.01" min="0" inputmode="decimal" placeholder="0.00" required />
+        </label>
+
+        <label class="field">
+          <span class="field__label">Description</span>
+          <input type="text" id="txDescription" class="field__input" placeholder="e.g. Groceries" required />
+        </label>
+
+        <label class="field">
+          <span class="field__label">Category</span>
+          <select id="txCategory" class="field__input"></select>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Date</span>
+          <input type="date" id="txDate" class="field__input" required />
+        </label>
+
+        <label class="field">
+          <span class="field__label">Note <span class="field__optional">(optional)</span></span>
+          <textarea id="txNote" class="field__input" rows="2" placeholder="Add a note…"></textarea>
+        </label>
+
+        <div class="field">
+          <span class="field__label">Receipt <span class="field__optional">(optional)</span></span>
+          <div class="receipt-actions">
+            <button type="button" class="btn btn--ghost" id="takePhotoBtn">📷 Take Photo</button>
+            <button type="button" class="btn btn--ghost" id="chooseFileBtn">🖼️ Choose File</button>
+          </div>
+          <input type="file" id="receiptCamera" accept="image/*" capture="environment" hidden />
+          <input type="file" id="receiptGallery" accept="image/*" hidden />
+          <div id="receiptPreview" class="receipt-preview" hidden>
+            <img id="receiptPreviewImg" alt="Receipt preview" />
+            <button type="button" class="btn btn--danger btn--sm" id="removeReceiptBtn">Remove</button>
+          </div>
+        </div>
+
+        <div class="form__actions">
+          <button type="button" class="btn btn--danger" id="deleteTxBtn" hidden>Delete</button>
+          <button type="submit" class="btn btn--primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= RECEIPT VIEWER ================= -->
+  <div id="receiptViewer" class="viewer" aria-hidden="true">
+    <button class="viewer__close icon-btn" type="button" data-close aria-label="Close">✕</button>
+    <img id="receiptViewerImg" class="viewer__img" alt="Receipt" />
+  </div>
+
+  <!-- ================= BUDGET EDIT MODAL ================= -->
+  <div id="budgetModal" class="modal" aria-hidden="true">
+    <div class="modal__backdrop" data-close></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="budgetModalTitle">
+      <div class="modal__header">
+        <h2 id="budgetModalTitle" class="modal__title">Set Budget</h2>
+        <button class="icon-btn" type="button" data-close aria-label="Close">✕</button>
+      </div>
+      <form id="budgetForm" class="form">
+        <input type="hidden" id="budgetCategory" />
+        <label class="field">
+          <span class="field__label">Monthly limit for <strong id="budgetCategoryName"></strong></span>
+          <input type="number" id="budgetLimit" class="field__input" step="0.01" min="0" inputmode="decimal" placeholder="0.00" />
+        </label>
+        <div class="form__actions">
+          <button type="submit" class="btn btn--primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
